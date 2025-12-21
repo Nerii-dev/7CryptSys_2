@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { useAuth } from "./contexts/AuthContext";
 import { Login } from "./pages/Auth/Login";
 import { MainLayout } from "./components/layout/MainLayout";
+import { CountingPage } from "./pages/Contagem/CountingPage";
+import { ReportsPage } from "./pages/Relatorios/ReportsPage";
+import { ClaimsPage } from "./pages/Sinistros/ClaimsPage";
 import { Dashboard } from "./pages/Dashboard/Dashboard";
 import { SalesManagementComponent } from "./pages/Vendas/SalesManagementComponent";
 import { TasksManagementComponent } from "./pages/Tarefas/TasksManagementComponent";
@@ -46,6 +49,11 @@ function App() {
           <Route path="/tasks" element={<TasksManagementComponent />} />
           <Route path="/metrics" element={<MetricsDashboardComponent />} />
           <Route path="/settings" element={<SettingsComponent />} /> {/* ATUALIZADO */}
+          
+          {/* NOVAS ROTAS */}
+          <Route path="/counting" element={<CountingPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/claims" element={<ClaimsPage />} />
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
