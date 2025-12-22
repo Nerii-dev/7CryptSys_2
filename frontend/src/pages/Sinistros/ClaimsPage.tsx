@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { AlertTriangle, Package, Truck, Calendar, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
 
-// Lista em ordem alfabética conforme solicitado
 const STORES_ALPHABETICAL = [
     "7788",
     "Gomez/Shark",
     "Goro Antiga",
     "Goro Nova",
-    "Imperío", // Mantendo acentuação se foi pedido, senão Império
+    "Imperío",
     "Joy",
     "L.A",
     "Yumi"
@@ -22,9 +22,9 @@ export const ClaimsPage = () => {
   
   const [formData, setFormData] = useState({
       store: STORES_ALPHABETICAL[0],
-      shippingMethod: 'Coleta', // Default Marketplace
-      orderId: '', // Serve para NFe ou Pedido
-      saleNumber: '', // Apenas Marketplace
+      shippingMethod: 'Coleta',
+      orderId: '', 
+      saleNumber: '',
       date: new Date().toISOString().split('T')[0],
       type: 'divergencia',
       status: 'pendente',
@@ -39,13 +39,12 @@ export const ClaimsPage = () => {
     return () => unsubscribe();
   }, []);
 
-  // Resetar método de envio ao trocar categoria
   const handleCategoryChange = (newCat: 'marketplace' | 'venda_direta') => {
       setCategory(newCat);
       setFormData(prev => ({
           ...prev,
           shippingMethod: newCat === 'marketplace' ? 'Coleta' : 'FlexBoys',
-          saleNumber: '' // Limpa numero da venda se for VD
+          saleNumber: ''
       }));
   };
 
@@ -58,7 +57,7 @@ export const ClaimsPage = () => {
               ...formData,
               category,
               createdAt: serverTimestamp(),
-              createdBy: currentUser?.email,
+              createdBy: currentUser?.email || 'Desconhecido',
           });
           setFormData(prev => ({ ...prev, orderId: '', saleNumber: '', description: '' }));
           alert('Registro adicionado com sucesso!');
@@ -68,44 +67,57 @@ export const ClaimsPage = () => {
       }
   };
 
+  const getStatusColor = (status: string) => {
+      switch(status) {
+          case 'concluido': return 'bg-green-100 text-green-800 border-green-200';
+          case 'rejeitado': return 'bg-red-100 text-red-800 border-red-200';
+          default: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      }
+  };
+
   return (
-      <div className="p-6 max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6 text-red-700 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Controle de Divergências e Sinistros
-          </h1>
+      <div className="p-6 max-w-full mx-auto bg-gray-50 min-h-screen">
+          <header className="mb-8 flex items-center gap-3 border-b pb-4">
+            <div className="p-3 bg-red-100 rounded-full">
+                <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800">Controle de Divergências e Sinistros</h1>
+                <p className="text-gray-500">Gestão de ocorrências de Marketplace e Venda Direta</p>
+            </div>
+          </header>
           
-          <div className="grid lg:grid-cols-3 gap-8">
-              {/* Formulário */}
-              <div className="bg-white p-6 rounded-xl shadow border border-gray-200 h-fit">
-                  <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Novo Registro</h2>
+          <div className="grid lg:grid-cols-12 gap-8 items-start">
+              {/* Formulário (Coluna Esquerda - Sticky) */}
+              <div className="lg:col-span-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 sticky top-6">
+                  <h2 className="text-xl font-bold mb-6 text-gray-800 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      Novo Registro
+                  </h2>
                   
                   {/* Seletor de Categoria */}
-                  <div className="mb-4 flex bg-gray-100 p-1 rounded-lg">
+                  <div className="mb-6 flex bg-gray-100 p-1.5 rounded-lg shadow-inner">
                       <button 
                         type="button"
                         onClick={() => handleCategoryChange('marketplace')}
-                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${category === 'marketplace' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
+                        className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${category === 'marketplace' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
                       >
                           Marketplace
                       </button>
                       <button 
                         type="button"
                         onClick={() => handleCategoryChange('venda_direta')}
-                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${category === 'venda_direta' ? 'bg-white shadow text-green-700' : 'text-gray-500'}`}
+                        className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${category === 'venda_direta' ? 'bg-white shadow text-green-700' : 'text-gray-500 hover:text-gray-700'}`}
                       >
                           Venda Direta
                       </button>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                      {/* Loja */}
+                  <form onSubmit={handleSubmit} className="space-y-5">
                       <div>
-                          <label className="block text-sm font-medium text-gray-700">Loja</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Loja</label>
                           <select 
-                            className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                            className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             value={formData.store}
                             onChange={e => setFormData({...formData, store: e.target.value})}
                           >
@@ -113,11 +125,10 @@ export const ClaimsPage = () => {
                           </select>
                       </div>
 
-                      {/* Método de Envio */}
                       <div>
-                          <label className="block text-sm font-medium text-gray-700">Método de Envio</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Método de Envio</label>
                           <select 
-                            className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                            className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             value={formData.shippingMethod}
                             onChange={e => setFormData({...formData, shippingMethod: e.target.value})}
                           >
@@ -136,13 +147,12 @@ export const ClaimsPage = () => {
                           </select>
                       </div>
 
-                      {/* IDs */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Nº Pedido / NFe</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Pedido / NFe</label>
                             <input 
                                 type="text" 
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm" 
+                                className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={formData.orderId}
                                 onChange={e => setFormData({...formData, orderId: e.target.value})}
                                 required
@@ -150,10 +160,10 @@ export const ClaimsPage = () => {
                         </div>
                         {category === 'marketplace' && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Nº Venda</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nº Venda</label>
                                 <input 
                                     type="text" 
-                                    className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm" 
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={formData.saleNumber}
                                     onChange={e => setFormData({...formData, saleNumber: e.target.value})}
                                 />
@@ -163,18 +173,18 @@ export const ClaimsPage = () => {
 
                       <div className="grid grid-cols-2 gap-4">
                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Data Ocorrência</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
                             <input 
                                 type="date" 
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                                className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={formData.date}
                                 onChange={e => setFormData({...formData, date: e.target.value})}
                             />
                          </div>
                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Tipo</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                             <select 
-                                className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                                className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={formData.type}
                                 onChange={e => setFormData({...formData, type: e.target.value})}
                             >
@@ -185,9 +195,9 @@ export const ClaimsPage = () => {
                       </div>
 
                       <div>
-                          <label className="block text-sm font-medium text-gray-700">Status</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                           <select 
-                              className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                              className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                               value={formData.status}
                               onChange={e => setFormData({...formData, status: e.target.value})}
                           >
@@ -198,9 +208,9 @@ export const ClaimsPage = () => {
                       </div>
 
                       <div>
-                          <label className="block text-sm font-medium text-gray-700">Descrição</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                           <textarea 
-                             className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm" 
+                             className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                              rows={3}
                              value={formData.description}
                              onChange={e => setFormData({...formData, description: e.target.value})}
@@ -209,51 +219,88 @@ export const ClaimsPage = () => {
                           ></textarea>
                       </div>
 
-                      <button type="submit" className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 font-bold shadow transition-colors">
-                          Registrar
+                      <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold shadow-md hover:shadow-lg transition-all flex justify-center items-center gap-2">
+                          <CheckCircle className="w-5 h-5" />
+                          Registrar Ocorrência
                       </button>
                   </form>
               </div>
 
-              {/* Lista de Registros */}
-              <div className="lg:col-span-2">
-                  <h2 className="text-xl font-bold mb-4 text-gray-700">Histórico</h2>
-                  <div className="space-y-4">
+              {/* Lista (Coluna Direita - Scrollável) */}
+              <div className="lg:col-span-8">
+                  <h2 className="text-xl font-bold mb-6 text-gray-800 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-gray-600" />
+                      Histórico Recente
+                  </h2>
+                  
+                  <div className="space-y-4 max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar">
                       {claims.map(claim => (
-                          <div key={claim.id} className="bg-white p-4 rounded-lg shadow border-l-4 border-l-red-500 border border-gray-100">
-                              <div className="flex justify-between items-start mb-2">
-                                  <div>
-                                      <span className="font-bold text-gray-800 text-lg mr-2">{claim.store}</span>
-                                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                          {claim.category === 'marketplace' ? 'MktPlace' : 'Venda Direta'}
+                          <div key={claim.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                              <div className="flex justify-between items-start mb-3">
+                                  <div className="flex items-center gap-3">
+                                      <span className={`p-2 rounded-lg ${claim.category === 'marketplace' ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'}`}>
+                                          <Package className="w-5 h-5" />
                                       </span>
+                                      <div>
+                                          <h3 className="font-bold text-gray-800 text-lg">{claim.store}</h3>
+                                          <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                                              {claim.category === 'marketplace' ? 'Marketplace' : 'Venda Direta'}
+                                          </span>
+                                      </div>
                                   </div>
-                                  <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase
-                                      ${claim.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' : ''}
-                                      ${claim.status === 'concluido' ? 'bg-green-100 text-green-800' : ''}
-                                      ${claim.status === 'rejeitado' ? 'bg-gray-100 text-gray-800' : ''}
-                                  `}>
+                                  <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${getStatusColor(claim.status)} flex items-center gap-1`}>
+                                      {claim.status === 'concluido' && <CheckCircle className="w-3 h-3" />}
+                                      {claim.status === 'rejeitado' && <XCircle className="w-3 h-3" />}
+                                      {claim.status === 'pendente' && <Clock className="w-3 h-3" />}
                                       {claim.status}
                                   </div>
                               </div>
                               
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600 mb-3">
-                                  <div><span className="font-semibold">Pedido/NF:</span> {claim.orderId}</div>
-                                  {claim.saleNumber && <div><span className="font-semibold">Venda:</span> {claim.saleNumber}</div>}
-                                  <div><span className="font-semibold">Envio:</span> {claim.shippingMethod}</div>
-                                  <div><span className="font-semibold">Data:</span> {new Date(claim.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</div>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg">
+                                  <div>
+                                      <span className="block text-xs text-gray-400 uppercase font-semibold">Pedido/NF</span>
+                                      <span className="font-medium text-gray-800">{claim.orderId}</span>
+                                  </div>
+                                  {claim.saleNumber && (
+                                    <div>
+                                        <span className="block text-xs text-gray-400 uppercase font-semibold">Venda</span>
+                                        <span className="font-medium text-gray-800">{claim.saleNumber}</span>
+                                    </div>
+                                  )}
+                                  <div>
+                                      <span className="block text-xs text-gray-400 uppercase font-semibold">Envio</span>
+                                      <div className="flex items-center gap-1">
+                                          <Truck className="w-3 h-3" />
+                                          <span className="font-medium text-gray-800">{claim.shippingMethod}</span>
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <span className="block text-xs text-gray-400 uppercase font-semibold">Data</span>
+                                      <div className="flex items-center gap-1">
+                                          <Calendar className="w-3 h-3" />
+                                          <span className="font-medium text-gray-800">{new Date(claim.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</span>
+                                      </div>
+                                  </div>
                               </div>
 
-                              <div className="bg-gray-50 p-3 rounded text-gray-700 text-sm italic">
+                              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-gray-700 text-sm">
+                                  <span className="font-semibold text-yellow-800 block mb-1">Descrição do Ocorrido:</span>
                                   "{claim.description}"
                               </div>
                               
-                              <div className="mt-2 text-xs text-gray-400 text-right">
-                                  Registrado por: {claim.createdBy}
+                              <div className="mt-3 flex justify-between items-center text-xs text-gray-400 border-t pt-2">
+                                  <span>ID: {claim.id.substring(0, 8)}...</span>
+                                  <span>Registrado por: <span className="text-gray-600 font-medium">{claim.createdBy}</span></span>
                               </div>
                           </div>
                       ))}
-                      {claims.length === 0 && <p className="text-gray-500 text-center py-10">Nenhum registro encontrado.</p>}
+                      {claims.length === 0 && (
+                          <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                              <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                              <p className="text-gray-500 font-medium">Nenhum registro encontrado.</p>
+                              <p className="text-gray-400 text-sm">Use o formulário ao lado para registrar.</p>
+                          </div>
+                      )}
                   </div>
               </div>
           </div>

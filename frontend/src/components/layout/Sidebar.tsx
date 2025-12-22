@@ -21,13 +21,15 @@ export const Sidebar = () => {
     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900";
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col fixed left-0 top-0 h-full z-10">
+    // CORREÇÃO AQUI: Removido 'fixed', 'left-0', 'top-0', 'z-10', 'min-h-screen'
+    // Adicionado: 'flex-shrink-0' para garantir que ela não encolha
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full flex-shrink-0 transition-all duration-300">
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-bold text-gray-800">7CryptSys</h1>
         <p className="text-xs text-gray-500 mt-1">Gestão Integrada</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
         <Link to="/dashboard" className={`flex items-center p-3 rounded-lg transition-colors ${isActive('/dashboard')}`}>
           <LayoutDashboard className="w-5 h-5 mr-3" />
           <span className="font-medium">Dashboard</span>

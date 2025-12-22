@@ -9,11 +9,14 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
+  "overrides": {
+    "undici": "^6.21.1"
+  },
   "dependencies": {
     "@types/uuid": "^10.0.0",
     "chart.js": "^4.4.3",
     "date-fns": "^3.6.0",
-    "firebase": "^10.12.2",
+    "firebase": "^12.7.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.562.0",
     "react": "^18.2.0",
