@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
-import { showToast } from '../../utils/toast'; // Assumindo que você tenha um utilitário de toast, senão use alert
+// REMOVIDO: import { showToast } ...
 
-// Lista exata do projeto 7CryptSys para compatibilidade de dados
+// Configurações e Constantes
 const STORES_CONFIG = [
   { id: 'joy_ml', label: 'Joy ML', hasHorarios: true, isFull: true },
   { id: 'joy_shopee', label: 'Joy (Shopee)', hasHorarios: true, isFull: false },
@@ -27,7 +27,7 @@ export const CountingPage = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'envios' | 'full'>('envios'); // Sub-menu state
+  const [activeTab, setActiveTab] = useState<'envios' | 'full'>('envios'); 
   
   const [data, setData] = useState<{
     full: Record<string, number>;
@@ -55,10 +55,11 @@ export const CountingPage = () => {
 
         if (docSnap.exists()) {
           const loadedData = docSnap.data();
-          setData(prev => ({
+          // CORREÇÃO: Removido 'prev' pois não é usado aqui
+          setData({
             full: loadedData.full || {},
             horarios: loadedData.horarios || {},
-          }));
+          });
           setStatusMsg(`${source} carregado.`);
         } else {
           setData({ full: {}, horarios: {} });
@@ -121,7 +122,7 @@ export const CountingPage = () => {
         updatedBy: currentUser?.email,
         lastUpdated: serverTimestamp()
       }, { merge: true });
-      alert('Relatório Final Salvo com Sucesso!');
+      alert('Relatório Final Salvo com Sucesso!'); // CORREÇÃO: Usando alert direto
     } catch (e) {
       alert('Erro ao salvar.');
     } finally {
@@ -154,7 +155,6 @@ export const CountingPage = () => {
       </header>
       
       <div className="flex justify-between items-center mb-4">
-          {/* Sub-menu (Abas) */}
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setActiveTab('envios')}
@@ -183,7 +183,6 @@ export const CountingPage = () => {
 
       <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
         
-        {/* Conteúdo da Aba Envios */}
         {activeTab === 'envios' && (
           <div className="animate-fade-in">
             <h2 className="text-xl font-bold mb-6 text-blue-700 border-b pb-2">Envios: Coleta & Flex</h2>
@@ -244,7 +243,6 @@ export const CountingPage = () => {
           </div>
         )}
 
-        {/* Conteúdo da Aba FULL */}
         {activeTab === 'full' && (
           <div className="animate-fade-in">
             <h2 className="text-xl font-bold mb-6 text-purple-700 border-b pb-2">Contagem FULL</h2>
