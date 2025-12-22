@@ -1,15 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { showToast } from '../../utils/toast'; // Assumindo que você tenha um utilitário de toast, senão use alert
 
-// Configurações e Constantes
-const STORES = [
+// Lista exata do projeto 7CryptSys para compatibilidade de dados
+const STORES_CONFIG = [
   { id: 'joy_ml', label: 'Joy ML', hasHorarios: true, isFull: true },
-  { id: 'goro_oficial_ml', label: 'Goro Oficial ML', hasHorarios: true, isFull: true },
-  { id: '7788_ml', label: '7788 ML', hasHorarios: true, isFull: true },
   { id: 'joy_shopee', label: 'Joy (Shopee)', hasHorarios: true, isFull: false },
-  // ... adicione as outras lojas conforme necessário (Gomez, Yumi, etc)
+  { id: 'joy_vd_frenet', label: 'Joy VD (Frenet)', hasHorarios: true, isFull: false },
+  { id: 'joy_vd_flexboys', label: 'Joy VD (FlexBoys)', hasHorarios: true, isFull: false },
+  { id: 'joy_vd_retirada', label: 'Joy VD (Retirada)', hasHorarios: true, isFull: false },
+  { id: 'goro_oficial_ml', label: 'Goro Oficial ML', hasHorarios: true, isFull: true },
+  { id: 'goro_ml_antiga', label: 'Goro ML (Antiga)', hasHorarios: true, isFull: false },
+  { id: '7788_ml', label: '7788 ML', hasHorarios: true, isFull: true },
+  { id: 'gomez_ml', label: 'Gomez ML', hasHorarios: true, isFull: true },
+  { id: 'yumi_ml', label: 'Yumi ML', hasHorarios: true, isFull: true },
+  { id: 'império_ll', label: 'Império LL', hasHorarios: true, isFull: true },
+  { id: 'l.a', label: 'L.A', hasHorarios: true, isFull: true }
 ];
 
 const HOURS = ['08', '10', '12', '14'];
@@ -19,19 +27,16 @@ export const CountingPage = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [activeTab, setActiveTab] = useState<'envios' | 'full'>('envios'); // Sub-menu state
   
-  // Estado único para todos os dados
   const [data, setData] = useState<{
     full: Record<string, number>;
     horarios: Record<string, Record<string, { coleta: number; flex: number }>>;
-    contagemFlex: Record<string, Record<string, number>>;
   }>({
     full: {},
     horarios: {},
-    contagemFlex: {}
   });
 
-  // Carregar dados (Rascunho ou Final)
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -50,16 +55,13 @@ export const CountingPage = () => {
 
         if (docSnap.exists()) {
           const loadedData = docSnap.data();
-          // Merge seguro para evitar undefined
           setData(prev => ({
             full: loadedData.full || {},
             horarios: loadedData.horarios || {},
-            contagemFlex: loadedData.contagemFlex || {}
           }));
           setStatusMsg(`${source} carregado.`);
         } else {
-          // Resetar se não houver dados
-          setData({ full: {}, horarios: {}, contagemFlex: {} });
+          setData({ full: {}, horarios: {} });
           setStatusMsg('Nenhum dado anterior.');
         }
       } catch (error) {
@@ -72,7 +74,7 @@ export const CountingPage = () => {
     loadData();
   }, [date]);
 
-  // Debounce para salvamento automático de rascunho
+  // Auto-save rascunho
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!currentUser) return;
@@ -87,12 +89,12 @@ export const CountingPage = () => {
       } catch (e) {
         console.error("Erro ao salvar rascunho", e);
       }
-    }, 1000); // Salva 1 segundo após parar de digitar
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [data, date, currentUser]);
 
-  const handleInputChange = (section: 'full' | 'horarios' | 'contagemFlex', path: string[], value: string) => {
+  const handleInputChange = (section: 'full' | 'horarios', path: string[], value: string) => {
     const numValue = value === '' ? 0 : parseInt(value, 10);
     setData(prev => {
       const newData = { ...prev };
@@ -100,20 +102,18 @@ export const CountingPage = () => {
       if (section === 'full') {
         newData.full = { ...prev.full, [path[0]]: numValue };
       } else if (section === 'horarios') {
-        // path: [loja, hora, tipo]
         const [store, hour, type] = path;
         if (!newData.horarios[store]) newData.horarios[store] = {};
         if (!newData.horarios[store][hour]) newData.horarios[store][hour] = { coleta: 0, flex: 0 };
         // @ts-ignore
         newData.horarios[store][hour] = { ...newData.horarios[store][hour], [type]: numValue };
       }
-      // Logica similar para contagemFlex se necessário
       return newData;
     });
   };
 
   const saveFinalReport = async () => {
-    if (!window.confirm(`Salvar relatório FINAL para ${date}? Isso consolidará os dados.`)) return;
+    if (!window.confirm(`Salvar relatório FINAL para ${date}?`)) return;
     try {
       setLoading(true);
       await setDoc(doc(db, 'faturamento_contagens', date), {
@@ -130,22 +130,22 @@ export const CountingPage = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-7xl mx-auto">
       <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Contagem Diária</h1>
-          <p className="text-gray-600">Central unificada de Full e Envios</p>
+          <p className="text-gray-600">Registro de Envios e Full</p>
         </div>
         <div className="flex items-center gap-4">
           <input 
             type="date" 
             value={date} 
             onChange={(e) => setDate(e.target.value)}
-            className="p-2 border rounded shadow-sm"
+            className="p-2 border rounded shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
           <button 
             onClick={saveFinalReport}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition-colors"
             disabled={loading}
           >
             {loading ? 'Salvando...' : 'Salvar Dia'}
@@ -153,76 +153,119 @@ export const CountingPage = () => {
         </div>
       </header>
       
-      <div className="text-sm text-right mb-4 text-gray-500 italic">{statusMsg}</div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Card FULL */}
-        <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-          <h2 className="text-xl font-bold mb-4 text-purple-700">Contagem FULL</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {STORES.filter(s => s.isFull).map(store => (
-              <div key={`full-${store.id}`}>
-                <label className="block text-sm font-medium text-gray-700">{store.label}</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={data.full[store.id] || ''}
-                  onChange={(e) => handleInputChange('full', [store.id], e.target.value)}
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-            ))}
+      <div className="flex justify-between items-center mb-4">
+          {/* Sub-menu (Abas) */}
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('envios')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'envios' 
+                  ? 'bg-white text-blue-700 shadow' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Envios (Coleta / Flex)
+            </button>
+            <button
+              onClick={() => setActiveTab('full')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'full' 
+                  ? 'bg-white text-purple-700 shadow' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Contagem FULL
+            </button>
           </div>
-        </div>
+          
+          <div className="text-sm text-gray-500 italic font-medium">{statusMsg}</div>
+      </div>
 
-        {/* Card Horários (Coleta/Flex) */}
-        <div className="bg-white p-6 rounded-xl shadow border border-gray-200 overflow-x-auto">
-          <h2 className="text-xl font-bold mb-4 text-blue-700">Horários (Coleta & Flex)</h2>
-          <table className="min-w-full text-center text-sm">
-            <thead>
-              <tr>
-                <th className="text-left">Loja</th>
-                {HOURS.map(h => <th key={h} colSpan={2} className="border-l">{h}:00</th>)}
-              </tr>
-              <tr>
-                <th></th>
-                {HOURS.map(h => (
-                  <React.Fragment key={`sub-${h}`}>
-                    <th className="text-xs text-gray-500 border-l">Col.</th>
-                    <th className="text-xs text-gray-500">Flex</th>
-                  </React.Fragment>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {STORES.filter(s => s.hasHorarios).map(store => (
-                <tr key={store.id} className="border-t">
-                  <td className="text-left font-medium py-2">{store.label}</td>
-                  {HOURS.map(h => (
-                    <React.Fragment key={`${store.id}-${h}`}>
-                      <td className="border-l p-1">
-                        <input 
-                          type="number" 
-                          className="w-12 text-center border rounded" 
-                          value={data.horarios[store.id]?.[`h${h}`]?.coleta || ''}
-                          onChange={(e) => handleInputChange('horarios', [store.id, `h${h}`, 'coleta'], e.target.value)}
-                        />
-                      </td>
-                      <td className="p-1">
-                        <input 
-                          type="number" 
-                          className="w-12 text-center border rounded"
-                          value={data.horarios[store.id]?.[`h${h}`]?.flex || ''}
-                          onChange={(e) => handleInputChange('horarios', [store.id, `h${h}`, 'flex'], e.target.value)}
-                        />
-                      </td>
-                    </React.Fragment>
+      <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
+        
+        {/* Conteúdo da Aba Envios */}
+        {activeTab === 'envios' && (
+          <div className="animate-fade-in">
+            <h2 className="text-xl font-bold mb-6 text-blue-700 border-b pb-2">Envios: Coleta & Flex</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-center text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Loja / Plataforma</th>
+                    {HOURS.map(h => (
+                      <th key={h} colSpan={2} className="px-2 py-3 border-l font-semibold text-gray-700">
+                        {h}:00
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className="border-b">
+                    <th></th>
+                    {HOURS.map(h => (
+                      <React.Fragment key={`sub-${h}`}>
+                        <th className="px-1 py-2 text-xs text-gray-500 uppercase tracking-wider border-l bg-gray-50">Coleta</th>
+                        <th className="px-1 py-2 text-xs text-gray-500 uppercase tracking-wider bg-gray-50">Flex</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {STORES_CONFIG.filter(s => s.hasHorarios).map(store => (
+                    <tr key={store.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="text-left font-medium py-3 px-4 text-gray-800">{store.label}</td>
+                      {HOURS.map(h => (
+                        <React.Fragment key={`${store.id}-${h}`}>
+                          <td className="border-l p-2">
+                            <input 
+                              type="number" 
+                              min="0"
+                              placeholder="0"
+                              className="w-16 p-1 text-center border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" 
+                              value={data.horarios[store.id]?.[`h${h}`]?.coleta || ''}
+                              onChange={(e) => handleInputChange('horarios', [store.id, `h${h}`, 'coleta'], e.target.value)}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input 
+                              type="number" 
+                              min="0"
+                              placeholder="0"
+                              className="w-16 p-1 text-center border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                              value={data.horarios[store.id]?.[`h${h}`]?.flex || ''}
+                              onChange={(e) => handleInputChange('horarios', [store.id, `h${h}`, 'flex'], e.target.value)}
+                            />
+                          </td>
+                        </React.Fragment>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Conteúdo da Aba FULL */}
+        {activeTab === 'full' && (
+          <div className="animate-fade-in">
+            <h2 className="text-xl font-bold mb-6 text-purple-700 border-b pb-2">Contagem FULL</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {STORES_CONFIG.filter(s => s.isFull).map(store => (
+                <div key={`full-${store.id}`} className="bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-purple-200 transition-colors">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{store.label}</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    placeholder="0"
+                    value={data.full[store.id] || ''}
+                    onChange={(e) => handleInputChange('full', [store.id], e.target.value)}
+                    className="block w-full p-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-lg font-medium text-center"
+                  />
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
