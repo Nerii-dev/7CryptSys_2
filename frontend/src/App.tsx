@@ -11,6 +11,7 @@ import { TasksManagementComponent } from "./pages/Tarefas/TasksManagementCompone
 import { ShippingComponent } from "./pages/Expedicao/ShippingComponent";
 import { MetricsDashboardComponent } from "./pages/Metricas/MetricsDashboardComponent";
 import { SettingsComponent } from "./pages/Settings/SettingsComponent";
+import { UserManagementPage } from "./pages/Admin/UserManagementPage"; // NOVO IMPORT
 
 const PublicRoute = () => {
   const { currentUser, loading } = useAuth();
@@ -49,6 +50,7 @@ function App() {
           <Route path="/tasks" element={<TasksManagementComponent />} />
           <Route path="/metrics" element={<MetricsDashboardComponent />} />
           <Route path="/settings" element={<SettingsComponent />} /> {/* ATUALIZADO */}
+          <Route path="/users" element={<UserManagementPage />} />
           
           {/* NOVAS ROTAS */}
           <Route path="/counting" element={<CountingPage />} />
