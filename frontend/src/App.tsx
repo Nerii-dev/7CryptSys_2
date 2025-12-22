@@ -32,6 +32,13 @@ const ProtectedRoute = () => {
   );
 };
 
+// Admin-only guard (assumes already authenticated via ProtectedRoute)
+const AdminRoute = () => {
+  const { userProfile, loading } = useAuth();
+  if (loading) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+  return userProfile?.role === 'admin' ? <Outlet /> : <Navigate to="/dashboard" replace />;
+};
+
 function App() {
   return (
     <BrowserRouter>
@@ -50,7 +57,11 @@ function App() {
           <Route path="/tasks" element={<TasksManagementComponent />} />
           <Route path="/metrics" element={<MetricsDashboardComponent />} />
           <Route path="/settings" element={<SettingsComponent />} /> {/* ATUALIZADO */}
-          <Route path="/users" element={<UserManagementPage />} />
+
+          {/* Rota admin protegida */}
+          <Route element={<AdminRoute />}>
+            <Route path="/users" element={<UserManagementPage />} />
+          </Route>
           
           {/* NOVAS ROTAS */}
           <Route path="/counting" element={<CountingPage />} />
