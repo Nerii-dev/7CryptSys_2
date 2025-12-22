@@ -1,92 +1,72 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User as FirebaseUser, onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { User, onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../services/firebase";
 import { UserProfile } from "../types/User";
 
 interface AuthContextType {
-  currentUser: FirebaseUser | null;
+  currentUser: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Monitora o estado de autenticação
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      if (!user) {
-        // Se o usuário deslogar, limpa o perfil e para de carregar
+      
+      if (user) {
+        // Se o usuário logou, busca o perfil dele no Firestore em tempo real
+        const userDocRef = doc(db, "users", user.uid);
+        
+        // Listener em tempo real: se você mudar a role no banco, o site atualiza na hora
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            console.warn("Usuário logado sem perfil no Firestore!");
+            setUserProfile(null);
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error("Erro ao buscar perfil:", error);
+          setLoading(false);
+        });
+
+        return () => unsubscribeSnapshot();
+      } else {
+        // Usuário deslogou
         setUserProfile(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    // Monitora o perfil do usuário no Firestore se estiver logado
-    let unsubscribeProfile: () => void = () => {};
-
-    if (currentUser) {
-      setLoading(true);
-      const userDocRef = doc(db, "users", currentUser.uid);
-
-      unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setUserProfile(docSnap.data() as UserProfile);
-        } else {
-          // --- CORREÇÃO AQUI ---
-          // Substituímos o logger de backend (functions.logger) pelo logger do navegador (console)
-          console.warn(`Usuário ${currentUser.uid} autenticado mas sem perfil no Firestore.`);
-          // --- FIM DA CORREÇÃO ---
-          
-          setUserProfile(null);
-          // Força o logout se o perfil não for encontrado
-          signOut(auth);
-        }
-        setLoading(false);
-      }, (error) => {
-        console.error("Erro ao buscar perfil:", error);
-        setUserProfile(null);
-        setLoading(false);
-      });
-    }
-
-    return () => unsubscribeProfile();
-  }, [currentUser]);
-
-  const logout = async () => {
-    await signOut(auth);
+  const logout = () => {
+    return signOut(auth);
   };
 
   const value = {
     currentUser,
     userProfile,
     loading,
-    logout,
+    logout
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
-};
-
-// Hook customizado para fácil acesso
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
-  }
-  return context;
 };
