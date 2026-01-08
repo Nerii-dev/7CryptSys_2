@@ -36,7 +36,7 @@ interface Task {
   status: 'pending' | 'completed';
   priority: 'low' | 'medium' | 'high';
   dueDate: string;
-  assignedTo: string; // Email do responsável
+  assignedTo: string; 
   createdBy: string;
   createdAt: any;
 }
@@ -54,13 +54,10 @@ export const TasksManagementComponent = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // ESTADOS DE FILTRO
-  // viewType: 'assigned' = O que mandaram pra mim | 'created' = O que eu mandei pros outros
+  // Filtros
   const [viewType, setViewType] = useState<'assigned' | 'created'>('assigned');
-  // statusFilter: Pendentes ou Concluídas
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed'>('pending');
 
-  // Formulário Nova Tarefa
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -69,7 +66,15 @@ export const TasksManagementComponent = () => {
     assignedTo: ''
   });
 
-  // 1. Carregar lista de usuários para o dropdown
+  // Helper para formatar data sem conversão de fuso (CORREÇÃO DO ERRO)
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    // Divide a string "2025-12-25" em partes e remonta manualmente
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  // Carregar Usuários
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -90,7 +95,7 @@ export const TasksManagementComponent = () => {
     fetchUsers();
   }, [currentUser]);
 
-  // 2. Carregar Tarefas (Baseado na Aba Selecionada)
+  // Carregar Tarefas
   useEffect(() => {
     if (!currentUser?.email) return;
 
@@ -98,9 +103,7 @@ export const TasksManagementComponent = () => {
     const tasksRef = collection(db, 'tasks');
     let q;
 
-    // LÓGICA DE SEPARAÇÃO DAS LISTAS
     if (viewType === 'assigned') {
-      // Lista 1: Tarefas atribuídas A MIM (Eu tenho que fazer)
       q = query(
         tasksRef,
         where('status', '==', statusFilter),
@@ -108,7 +111,6 @@ export const TasksManagementComponent = () => {
         orderBy('dueDate', 'asc')
       );
     } else {
-      // Lista 2: Tarefas criadas POR MIM (Eu estou acompanhando)
       q = query(
         tasksRef,
         where('status', '==', statusFilter),
@@ -125,17 +127,16 @@ export const TasksManagementComponent = () => {
       setTasks(tasksData);
       setLoading(false);
     }, (error) => {
-      console.error("Erro ao buscar tarefas (Pode ser necessário criar índice no Firebase Console):", error);
+      console.error("Erro ao buscar tarefas:", error);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [viewType, statusFilter, currentUser]);
 
-  // Criar Nova Tarefa
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTask.assignedTo) return alert("Selecione um responsável para a tarefa.");
+    if (!newTask.assignedTo) return alert("Selecione um responsável.");
 
     try {
       await addDoc(collection(db, 'tasks'), {
@@ -152,7 +153,7 @@ export const TasksManagementComponent = () => {
         dueDate: new Date().toISOString().split('T')[0],
         assignedTo: currentUser?.email || ''
       });
-      alert("Tarefa criada e atribuída com sucesso!");
+      alert("Tarefa criada com sucesso!");
     } catch (error) {
       console.error("Erro ao criar tarefa:", error);
       alert("Erro ao criar tarefa.");
@@ -160,28 +161,25 @@ export const TasksManagementComponent = () => {
   };
 
   const toggleTaskStatus = async (task: Task) => {
-    // Se eu criei a tarefa, mas não é pra mim, posso querer reabrir se não ficou bom
-    // Ou concluir se o funcionário esqueceu.
     const newStatus = task.status === 'pending' ? 'completed' : 'pending';
     try {
       await updateDoc(doc(db, 'tasks', task.id), { status: newStatus });
     } catch (error) {
-      console.error("Erro ao atualizar status:", error);
+      console.error(error);
     }
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir esta tarefa?")) {
+    if (window.confirm("Tem certeza que deseja excluir?")) {
       try {
         await deleteDoc(doc(db, 'tasks', id));
       } catch (error) {
-        console.error("Erro ao excluir:", error);
+        console.error(error);
       }
     }
   };
 
-  // === CORES E ESTILOS ===
-
+  // Cores
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-700 border-red-200';
@@ -194,6 +192,7 @@ export const TasksManagementComponent = () => {
   const getCardStyle = (task: Task) => {
     if (task.status === 'completed') return 'bg-gray-50 border-gray-200 opacity-75';
 
+    // Para cálculo de atraso, usamos T00:00:00 para forçar hora local e evitar problemas de fuso
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dueDate = new Date(task.dueDate + 'T00:00:00');
@@ -229,7 +228,6 @@ export const TasksManagementComponent = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       
-      {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
@@ -247,7 +245,6 @@ export const TasksManagementComponent = () => {
         </button>
       </div>
 
-      {/* ABAS PRINCIPAIS: Tipo de Visualização */}
       <div className="bg-gray-100 p-1 rounded-lg flex gap-1 mb-6 max-w-md">
         <button
             onClick={() => setViewType('assigned')}
@@ -257,7 +254,7 @@ export const TasksManagementComponent = () => {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
         >
-            <Inbox className="w-4 h-4" /> Minhas Tarefas (Recebidas)
+            <Inbox className="w-4 h-4" /> Minhas Tarefas
         </button>
         <button
             onClick={() => setViewType('created')}
@@ -267,11 +264,10 @@ export const TasksManagementComponent = () => {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
         >
-            <Send className="w-4 h-4" /> Criadas por Mim (Delegadas)
+            <Send className="w-4 h-4" /> Criadas por Mim
         </button>
       </div>
 
-      {/* SUB-FILTROS: Pendentes / Concluídas */}
       <div className="flex gap-4 mb-4 border-b border-gray-200">
         <button
           onClick={() => setStatusFilter('pending')}
@@ -295,7 +291,6 @@ export const TasksManagementComponent = () => {
         </button>
       </div>
 
-      {/* Lista de Tarefas */}
       <div className="grid gap-4">
         {loading ? (
            <p className="text-gray-500 text-center py-8">Carregando tarefas...</p>
@@ -327,11 +322,11 @@ export const TasksManagementComponent = () => {
                 <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                 
                 <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                  {/* AQUI ESTÁ A CORREÇÃO: USAMOS A FUNÇÃO formatDate AO INVÉS DE Date() */}
                   <span className="flex items-center gap-1 bg-white/50 px-2 py-1 rounded">
-                    <Calendar className="w-3 h-3" /> Prazo: {new Date(task.dueDate).toLocaleDateString('pt-BR')}
+                    <Calendar className="w-3 h-3" /> Prazo: {formatDate(task.dueDate)}
                   </span>
                   
-                  {/* Lógica de exibição de quem mandou/recebeu */}
                   {viewType === 'assigned' ? (
                       <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
                         <User className="w-3 h-3" /> Criado por: <strong>{task.createdBy}</strong>
@@ -343,7 +338,6 @@ export const TasksManagementComponent = () => {
                   )}
                 </div>
 
-                {/* Aviso de Atraso */}
                 {getDelayText(task)}
               </div>
 
@@ -373,7 +367,6 @@ export const TasksManagementComponent = () => {
         )}
       </div>
 
-      {/* MODAL: Nova Tarefa */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
